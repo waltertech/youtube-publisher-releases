@@ -1,3 +1,5 @@
+from local_transport import websocket_options
+from local_transport import urlopen as transport_urlopen
 """BitBrowser RPA large-file upload adapter; task-bound, no file streaming."""
 import json,urllib.request,time
 from pathlib import Path
@@ -5,7 +7,7 @@ from websockets.sync.client import connect
 from publisher import Ledger,ROOT,datetime,TZ
 
 class CDP:
- def __init__(self,ws):self.ws=connect(ws,origin=None,max_size=8*1024*1024,open_timeout=10);self.seq=0
+ def __init__(self,ws):self.ws=connect(ws,**websocket_options(ws),origin=None,max_size=8*1024*1024,open_timeout=10);self.seq=0
  def call(self,method,params=None):
   self.seq+=1;key=self.seq;self.ws.send(json.dumps({'id':key,'method':method,'params':params or {}}))
   while True:
@@ -30,10 +32,10 @@ def active_task(p):
 
 def page(a,require_dialog=True):
  req=urllib.request.Request('http://127.0.0.1:54345/browser/open',json.dumps({'id':a['window_id']}).encode(),{'Content-Type':'application/json'})
- result=json.load(urllib.request.urlopen(req,timeout=20))
+ result=json.load(transport_urlopen(req,timeout=20))
  if not result.get('success'):raise ValueError('无法连接目标GM窗口')
  host=result['data']['http'];host=host if host.startswith('http') else 'http://'+host
- tabs=json.load(urllib.request.urlopen(host+'/json/list',timeout=10))
+ tabs=json.load(transport_urlopen(host+'/json/list',timeout=10))
  candidates=[x for x in tabs if (not a.get('target_id') or x.get('id')==a['target_id']) and x.get('type')=='page' and x.get('url','').startswith('https://studio.youtube.com/channel/'+a['channel_id'])]
  # Prefer upload dialog, but reject multiple upload targets.
  opened=[]

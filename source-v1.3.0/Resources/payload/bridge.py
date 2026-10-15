@@ -1,3 +1,4 @@
+from local_transport import urlopen as transport_urlopen
 """Loopback bridge for native Bit RPA. Credentials never sync to Feishu."""
 import json,secrets,os,urllib.request,argparse,time
 from http.server import HTTPServer,BaseHTTPRequestHandler
@@ -112,7 +113,7 @@ def _dispatch(gms=None,manual=False,mode="draft",task_ids=None):
    return
   task_id=c['native_tasks'][ch['gm']]
   req=urllib.request.Request('http://127.0.0.1:54345/rpa/run',json.dumps({'id':task_id}).encode(),{'Content-Type':'application/json'})
-  with urllib.request.urlopen(req,timeout=30) as r:result=json.load(r)
+  with transport_urlopen(req,timeout=30) as r:result=json.load(r)
   if not result.get('success'):raise ValueError('比特任务启动失败')
  except Exception as e:
   l.report(t['id'],t['token'],'结果待核查',t['channel_id'],error=str(e));raise

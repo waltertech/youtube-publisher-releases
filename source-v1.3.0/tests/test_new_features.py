@@ -48,7 +48,7 @@ class ScopeTests(unittest.TestCase):
  def test_initialization_passes_scope_to_both_stages(self):
   import installation
   windows=[{'id':'one','name':'same'},{'id':'two','name':'same'}]
-  with patch.object(installation,'fetch_all',return_value=windows),patch.object(installation.subprocess,'run') as run,contextlib.redirect_stdout(io.StringIO()):
+  with patch.object(installation,'fetch_all',return_value=windows),patch.object(installation.subprocess,'run') as run,patch.object(installation,'window_result',return_value=(1,'')),contextlib.redirect_stdout(io.StringIO()):
    installation.initialize(['two'])
    self.assertEqual(run.call_count,2)
    for call in run.call_args_list:self.assertEqual(call.args[0][-2:],['--window-id','two'])

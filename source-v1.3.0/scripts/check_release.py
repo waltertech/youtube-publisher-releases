@@ -22,7 +22,7 @@ def main():
     args = parser.parse_args()
     root = args.directory
     metadata = json.loads((root / 'update.json').read_text())
-    assert metadata['version'] == '1.3.0'
+    assert metadata['version'] == '1.3.1'
     archive = root / ('YouTubePublisher-Mac-' + metadata['version'] + '.zip')
     assert metadata['size'] == archive.stat().st_size
     assert metadata['sha256'] == sha(archive)
@@ -31,7 +31,7 @@ def main():
         assert all(n.startswith('YouTube发布工作台.app/') and '..' not in Path(n).parts for n in z.namelist())
         prefix = 'YouTube发布工作台.app/Contents/'
         info = plistlib.loads(z.read(prefix + 'Info.plist'))
-        assert info['CFBundleShortVersionString'] == info['CFBundleVersion'] == '1.3.0'
+        assert info['CFBundleShortVersionString'] == info['CFBundleVersion'] == '1.3.1'
         assert prefix + 'Resources/payload/material_rules.py' in z.namelist()
         assert not any(n.endswith(('.sqlite3','.pyc')) for n in z.namelist() if '/payload/' in n)
     for line in (root / 'SHA256SUMS.txt').read_text().splitlines():

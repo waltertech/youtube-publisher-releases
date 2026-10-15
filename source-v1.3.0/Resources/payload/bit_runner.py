@@ -1,3 +1,4 @@
+from local_transport import urlopen as transport_urlopen
 """Local BitBrowser runner. Reuses workflow page steps; no cloud workflow keys."""
 import json,time,urllib.request,argparse,uuid
 from publisher import ROOT,Ledger
@@ -23,7 +24,7 @@ def open_page(window_id):
  d=api('browser/open',{'id':window_id});b=CDP(d['ws']);tid=b.call('Target.createTarget',{'url':'about:blank'})['targetId']
  host=d['http'];host=host if host.startswith('http') else 'http://'+host
  for _ in range(20):
-  t=next((t for t in json.load(urllib.request.urlopen(host+'/json/list',timeout=8)) if t['id']==tid),None)
+  t=next((t for t in json.load(transport_urlopen(host+'/json/list',timeout=8)) if t['id']==tid),None)
   if t:return b,tid,CDP(t['webSocketDebuggerUrl'])
   time.sleep(.5)
  b.call('Target.closeTarget',{'targetId':tid});b.close();raise ValueError('无法创建运行页')

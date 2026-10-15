@@ -2,18 +2,21 @@
 import json,urllib.request,threading,time
 from datetime import datetime
 from publisher import TZ
+# Local API must never be routed through a system HTTP proxy.
+from local_transport import LOCAL_OPENER
 LOCK=threading.Lock()
 CACHE={'items':[],'updated':None,'error':'正在读取比特窗口'}
 def fetch_all():
  items={};page=0
  while True:
   req=urllib.request.Request('http://127.0.0.1:54345/browser/list',json.dumps({'page':page,'pageSize':100}).encode(),{'Content-Type':'application/json'})
-  with urllib.request.urlopen(req,timeout=8) as r:result=json.load(r)
-  if not result.get('success'):raise ValueError('比特窗口接口读取失败')
+  with LOCAL_OPENER.open(req,timeout=8) as r:result=json.load(r)
+  if not result.get('success'):raise ValueError('比特窗口接口拒绝请求：'+str(result.get('msg') or result.get('message') or '未返回原因')[:300])
   d=result['data'];rows=d.get('list',[]);previous=len(items)
   for row in rows:
    items[row['id']]={'id':row['id'],'name':row.get('name') or '未命名窗口','seq':row.get('seq',0)}
-  if len(items)>=d.get('totalNum',len(items)) or not rows:break
+  total=d.get('totalNum')
+  if not rows or (total is not None and len(items)>=int(total)) or (total is None and len(rows)<100):break
   if len(items)==previous:raise ValueError('窗口分页没有推进，列表尚未完整')
   page+=1
  return sorted(items.values(),key=lambda r:(r['name'],r['seq']))
@@ -21,8 +24,8 @@ def refresh():
  try:
   items=fetch_all()
   with LOCK:CACHE.update(items=items,updated=datetime.now(TZ).isoformat(),error='')
- except Exception:
-  with LOCK:CACHE['error']='无法连接比特浏览器，保留上次列表；请打开比特后刷新'
+ except Exception as e:
+  with LOCK:CACHE['error']='读取比特窗口失败：'+str(e)[:400]+'；保留上次列表，请检查 Local API 后刷新'
   raise
  return len(items)
 def state():

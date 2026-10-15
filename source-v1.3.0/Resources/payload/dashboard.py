@@ -1,3 +1,4 @@
+from local_transport import urlopen as transport_urlopen
 """Loopback-only dashboard; opening it never claims a task or uploads a file."""
 import argparse, json, os, secrets, socket, subprocess, sys, threading, time
 import urllib.request, urllib.error
@@ -28,7 +29,7 @@ LOGDIR.mkdir(exist_ok=True)
 def bridge_ready():
  try:
   req=urllib.request.Request('http://127.0.0.1:18740/health',headers={'X-Publisher-Key':(ROOT/'.bridge-secret').read_text()})
-  with urllib.request.urlopen(req,timeout=1) as r:return json.load(r).get('service')=='ypp-bridge'
+  with transport_urlopen(req,timeout=1) as r:return json.load(r).get('service')=='ypp-bridge'
  except Exception:return False
 
 def ensure_bridge():
@@ -142,7 +143,7 @@ def snapshot(gms=None):
  if not ready:blocked.insert(0,'桥接服务未运行')
  with MUTEX:job=json.loads(json.dumps(JOB))
  publishable={c['id'] for w in window_items for c in w['channels'] if c['enabled'] and c['verified'] and config.get('manual_ready',{}).get(c['gm']) and (w['id'] not in onboarding or c['id'] in {ch['id'] for ch in onboarding[w['id']].get('channels',[])})}
- return {'publishable_channels_count':len(publishable),'version':'1.3.0','material_rules':material_rules.read(),'manual_queue':manual_queue.read(),'concurrency':parallel_settings.read(),'telemetries':dict(TELEMETRIES),'acceptance':acceptance.state(),'schedule':scheduler.state(),'service':'ypp-dashboard','time':now.isoformat(),'bridge':ready,'tasks':tasks,'assets':assets,'channels':channels,'windows':window_items,'window_updated':window_state['updated'],'window_error':window_state['error'],'logs':logs,'telemetry':dict(TELEMETRY),'job':job,'blockers':blocked,'sync_pending':pending,'mode':'手动启动 · 可选草稿或正式发布','public_ready':config.get('execution_engine')!='local' or bool(config.get('local_public_enabled')),'source':local_settings.read().get('material_dir','尚未选择素材目录'),'feishu':feishu_auth.state(),'base':feishu_link()}
+ return {'publishable_channels_count':len(publishable),'version':'1.3.1','material_rules':material_rules.read(),'manual_queue':manual_queue.read(),'concurrency':parallel_settings.read(),'telemetries':dict(TELEMETRIES),'acceptance':acceptance.state(),'schedule':scheduler.state(),'service':'ypp-dashboard','time':now.isoformat(),'bridge':ready,'tasks':tasks,'assets':assets,'channels':channels,'windows':window_items,'window_updated':window_state['updated'],'window_error':window_state['error'],'logs':logs,'telemetry':dict(TELEMETRY),'job':job,'blockers':blocked,'sync_pending':pending,'mode':'手动启动 · 可选草稿或正式发布','public_ready':config.get('execution_engine')!='local' or bool(config.get('local_public_enabled')),'source':local_settings.read().get('material_dir','尚未选择素材目录'),'feishu':feishu_auth.state(),'base':feishu_link()}
 
 def task_preview(task_id):
  import base64, mimetypes
@@ -275,7 +276,7 @@ class Handler(BaseHTTPRequestHandler):
    return self.reply(200,installation.status())
   if self.path=='/workflow-template':
    body=(ROOT/'通用流程-无凭据.automa.json').read_bytes();self.send_response(200);self.send_header('Content-Type','application/octet-stream');self.send_header('Content-Disposition','attachment; filename=YouTube-workflow.automa.json');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body);return
-  if self.path=='/health':return self.reply(200,{'service':'ypp-dashboard','version':'1.3.0','data_dir':str(ROOT)})
+  if self.path=='/health':return self.reply(200,{'service':'ypp-dashboard','version':'1.3.1','data_dir':str(ROOT)})
   self.reply(404,{'error':'未找到'})
  def do_POST(self):
   if (ROOT/'.update-lock').exists():return self.reply(409,{'error':'正在等待安装应用更新，已暂停新操作'})
@@ -339,7 +340,7 @@ if __name__=='__main__':
  else:
   def alive():
    try:
-    with urllib.request.urlopen(ORIGIN+'/health',timeout=1) as r:return json.load(r).get('service')=='ypp-dashboard'
+    with transport_urlopen(ORIGIN+'/health',timeout=1) as r:return json.load(r).get('service')=='ypp-dashboard'
    except Exception:return False
   if not alive():
    with (LOGDIR/'dashboard.log').open('ab') as f:subprocess.Popen([sys.executable,'-u',str(Path(__file__).resolve()),'--serve'],cwd=ROOT,stdout=f,stderr=f,start_new_session=True)

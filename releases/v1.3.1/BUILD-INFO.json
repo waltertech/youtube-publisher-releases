@@ -1,0 +1,14 @@
+{
+  "version": "1.3.1",
+  "architectures": [
+    "arm64",
+    "x86_64"
+  ],
+  "launcher": "Unmodified compiled universal launcher from installed 1.1.10 baseline; launcher Swift sources unavailable",
+  "launcher_sha256": "1abfce6803d6664794a39228b9fd8a6fd5a95e218d613290c199921039f66fb4",
+  "baseline_version": "1.1.10",
+  "codesign": "ad-hoc; verified deep/strict",
+  "notarized": false,
+  "bootstrap_init_only": "passed using isolated data directory",
+  "online_update_signature": "verified with original publisher Ed25519 key"
+}

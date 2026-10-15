@@ -9,7 +9,7 @@ def status():
  from feishu_auth import CLI
  try:
   windows=fetch_all();bit={'ok':True,'message':f'已连接比特浏览器，共 {len(windows)} 个窗口'}
- except Exception:bit={'ok':False,'message':'请安装并登录比特浏览器，在设置中开启 Local API（端口 54345），然后重新检测。'}
+ except Exception as e:bit={'ok':False,'message':'读取窗口失败：'+str(e)[:400]+'。请确认比特已登录，Local API 已开启（端口 54345）。'}
  return {'bit':bit,'python':sys.version.split()[0],'workflow':(ROOT/'通用流程-无凭据.automa.json').is_file(),'lark':Path(CLI).is_file(),'data_dir':str(ROOT),'native_import':'比特公开 API 未提供原生工作流导入接口。本应用已安装本机执行流程，无需设计器；附带模板供手动导入参考。'}
 
 def repair_cores():
@@ -41,16 +41,44 @@ def repair_cores():
   report.append(row);print(w['name']+'：'+row['status'],flush=True)
  (ROOT/'安装检查结果.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
 
+def window_result(window_id):
+ discovery_path=ROOT/'窗口接入状态.json'
+ discovery=json.loads(discovery_path.read_text()) if discovery_path.exists() else {}
+ row=discovery.get(window_id,{})
+ if row.get('error'):return 0,row['error']
+ if not row.get('channels'):return 0,'未发现频道，请检查 YouTube 登录、网络或验证页面'
+ l=Ledger()
+ try:
+  channels=l.db.execute('SELECT enabled,verified,reason FROM channels WHERE window_id=?',(window_id,)).fetchall()
+  count=sum(bool(c['enabled'] and c['verified']) for c in channels)
+  reasons='；'.join(dict.fromkeys(c['reason'] or '权限未核实' for c in channels if not(c['enabled'] and c['verified'])))
+  return count,reasons or '频道尚未完成绑定'
+ finally:l.db.close()
+
 def initialize(window_ids=None):
- # Discovery and permissions already use exclusive guards and do not publish.
- if window_ids is not None:
-  from window_scope import select_windows
-  select_windows(fetch_all(),window_ids)
- for script in ('onboard_windows.py','probe_all_channels.py'):
-  cmd=[sys.executable,'-u',str(ROOT/script)]
-  for wid in window_ids or []:cmd.extend(['--window-id',wid])
-  subprocess.run(cmd,cwd=ROOT,check=True)
- print('本机执行流程已安装，频道配置完成。未就绪频道请查看具体原因；本次不会发布视频。',flush=True)
+ from window_scope import select_windows
+ windows=select_windows(fetch_all(),window_ids)
+ if not windows:raise ValueError('比特接口已连接，但没有返回窗口。请确认新电脑登录的是拥有窗口权限的比特账号。')
+ ready=0;failures=[]
+ for index,w in enumerate(windows,1):
+  prefix=f"[{index}/{len(windows)}] {w['name']}"
+  try:
+   for script,label in [('onboard_windows.py','发现频道'),('probe_all_channels.py','核验权限并启用')]:
+    print(prefix+'：'+label,flush=True)
+    subprocess.run([sys.executable,'-u',str(ROOT/script),'--window-id',w['id']],cwd=ROOT,check=True)
+    if script=='onboard_windows.py':
+     path=ROOT/'窗口接入状态.json'
+     report=json.loads(path.read_text()) if path.exists() else {}
+     row=report.get(w['id'],{})
+     if row.get('error'):raise ValueError(row['error'])
+   count,reason=window_result(w['id'])
+   if not count:raise ValueError(reason)
+   ready+=1;print(prefix+f'：配置完成，{count} 个可用频道',flush=True)
+  except Exception as e:
+   failures.append(prefix+'：'+str(e));print(failures[-1]+'；继续处理其他窗口',flush=True)
+ summary=f'配置结束：{ready}/{len(windows)} 个窗口可用，{len(failures)} 个需处理。'
+ if not ready:raise ValueError(summary+'\n'+'\n'.join(failures))
+ print(summary+' 本次不会发布视频。',flush=True)
 
 def configure_feishu(app_id,secret):
  from feishu_auth import CLI,refresh

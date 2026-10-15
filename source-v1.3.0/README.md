@@ -1,3 +1,5 @@
+> 当前修订版本为 **1.3.1**，保留原源码目录名以保持 PR 路径稳定。修复本机调试连接误走系统代理及频道配置结果误报；发布说明见 `../releases/v1.3.1/RELEASE-NOTES.md`。
+
 # YouTube 发布工作台 1.3.0
 
 基于 waltertech/youtube-publisher-releases 的 1.1.10 已发布应用提取的业务源码升级。支持 macOS 12+，包含 arm64 与 x86_64 运行依赖。Intel 尚未实机验证。

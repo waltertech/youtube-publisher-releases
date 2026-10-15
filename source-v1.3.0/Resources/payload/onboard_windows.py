@@ -1,3 +1,4 @@
+from local_transport import urlopen as transport_urlopen
 """Read-only channel discovery. Does not upload or enable unverified channels."""
 import json,time,urllib.request,argparse,socket
 from publisher import ROOT,Ledger,datetime,TZ
@@ -6,11 +7,11 @@ from bit_windows import fetch_all
 
 def api(path,payload):
  req=urllib.request.Request('http://127.0.0.1:54345/'+path,json.dumps(payload).encode(),{'Content-Type':'application/json'})
- r=json.load(urllib.request.urlopen(req,timeout=45))
+ r=json.load(transport_urlopen(req,timeout=45))
  if not r.get('success'):
   if path=='browser/open' and 'ESRCH' in r.get('msg',''):
    time.sleep(1)
-   r=json.load(urllib.request.urlopen(req,timeout=45))
+   r=json.load(transport_urlopen(req,timeout=45))
   if not r.get('success'):raise RuntimeError(r.get('msg','比特接口失败'))
  return r.get('data')
 
@@ -22,7 +23,7 @@ def discover(w):
   tid=browser.call('Target.createTarget',{'url':'https://www.youtube.com/channel_switcher'})['targetId']
   end=time.time()+55
   while time.time()<end:
-   tabs=json.load(urllib.request.urlopen(host+'/json/list',timeout=8));t=next((t for t in tabs if t['id']==tid),None)
+   tabs=json.load(transport_urlopen(host+'/json/list',timeout=8));t=next((t for t in tabs if t['id']==tid),None)
    if not t:time.sleep(1);continue
    c=CDP(t['webSocketDebuggerUrl'])
    try:

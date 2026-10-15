@@ -1,3 +1,4 @@
+from local_transport import urlopen as transport_urlopen
 """Inspect Studio feature eligibility without uploading files or saving settings."""
 import json,time,urllib.request
 from file_adapter import CDP
@@ -19,7 +20,7 @@ def inspect(w,channel):
  try:
   tid=b.call('Target.createTarget',{'url':'https://www.youtube.com/channel_switcher'})['targetId']
   for _ in range(20):
-   t=next((t for t in json.load(urllib.request.urlopen(host+'/json/list',timeout=8)) if t['id']==tid),None)
+   t=next((t for t in json.load(transport_urlopen(host+'/json/list',timeout=8)) if t['id']==tid),None)
    if t:break
    time.sleep(.5)
   if not t:raise ValueError('检查页创建失败')

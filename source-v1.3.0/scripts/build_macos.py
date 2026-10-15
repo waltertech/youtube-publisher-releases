@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build universal 1.3.0 packages from the original compiled runtime baseline."""
+"""Build universal 1.3.1 packages from the original compiled runtime baseline."""
 import argparse
 import hashlib
 import json
@@ -13,7 +13,7 @@ import stat
 import zipfile
 
 SOURCE = Path(__file__).resolve().parents[1]
-VERSION = '1.3.0'
+VERSION = '1.3.1'
 APP_NAME = 'YouTube发布工作台.app'
 
 
@@ -103,7 +103,7 @@ def main():
             'version': VERSION,
             'url': f'https://github.com/waltertech/youtube-publisher-releases/releases/download/v{VERSION}/{archive.name}',
             'sha256': digest(archive), 'size': archive.stat().st_size,
-            'notes': '新增兜底详情配置和素材设置弹窗；素材列表展示详情来源；已选窗口独立展示，支持只配置所选窗口频道，显示当前可发布频道总数。',
+            'notes': '修复开启 SOCKS/HTTP 代理时本机浏览器调试连接失败；逐窗口完成频道发现、权限核验和启用，显示真实失败原因。包含 1.3.0 素材设置和所选窗口配置功能。',
             'minimum_macos': '12.0'}
         (out / 'update.json').write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
         (out / 'BUILD-INFO.json').write_text(json.dumps({
