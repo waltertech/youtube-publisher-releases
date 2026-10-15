@@ -1,0 +1,8 @@
+{
+  "version": "1.3.0",
+  "url": "https://github.com/waltertech/youtube-publisher-releases/releases/download/v1.3.0/YouTubePublisher-Mac-1.3.0.zip",
+  "sha256": "898d803f05372d3ca900a5dc301881b7867b17446c25a95247441b7702828558",
+  "size": 79916083,
+  "notes": "新增兜底详情配置和素材设置弹窗；素材列表展示详情来源；已选窗口独立展示，支持只配置所选窗口频道，显示当前可发布频道总数。",
+  "minimum_macos": "12.0"
+}

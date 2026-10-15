@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.sqlite3*
+运行日志/
+dist/
+verification/
+dependencies/*.zip
