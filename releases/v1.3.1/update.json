@@ -1,0 +1,8 @@
+{
+  "version": "1.3.1",
+  "url": "https://github.com/waltertech/youtube-publisher-releases/releases/download/v1.3.1/YouTubePublisher-Mac-1.3.1.zip",
+  "sha256": "e1b707e7fbe9548d633fd525722e504d4284689f5e8ef83428ceed39ffd69c6f",
+  "size": 79919512,
+  "notes": "修复开启 SOCKS/HTTP 代理时本机浏览器调试连接失败；逐窗口完成频道发现、权限核验和启用，显示真实失败原因。包含 1.3.0 素材设置和所选窗口配置功能。",
+  "minimum_macos": "12.0"
+}
