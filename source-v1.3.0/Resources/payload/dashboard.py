@@ -65,27 +65,13 @@ def monitor_loop():
    l=Ledger()
    try:running=l.db.execute("SELECT id,channel,state FROM tasks WHERE state IN ('上传中','填写中','检查中','发布中')").fetchall()
    finally:l.db.close()
-   for t in running:
-    try:
-     p=parallel_settings.task_path(t['id'],'monitor')
-     if not p.exists():p=ROOT/'.monitor-endpoint.json'
-     if not p.exists():raise ValueError('等待上传流程建立进度连接')
-     endpoint=json.loads(p.read_text())
-     if endpoint.get('task')!=t['id'] or endpoint.get('channel')!=t['channel']:raise ValueError('等待当前任务的进度连接')
-     from file_adapter import CDP
-     c=CDP(endpoint['ws'])
-     try:
-      observed=c.evaluate("({channel:[...document.querySelectorAll('a[href]')].map(a=>a.href).find(x=>/^https:\\/\\/studio.youtube.com\\/channel\\/UC/.test(x)),text:document.querySelector('ytcp-uploads-dialog')?.innerText||''})")
-     finally:c.close()
-     if (observed.get('channel') or '').split('/channel/')[-1].split('/')[0]!=t['channel']:raise ValueError('当前页面频道不匹配，停止读取进度')
-     import re
-     txt=observed['text'];m=re.search(r'Uploading\s+(\d+)%[^\n]*|正在上传[^\n]*?(\d+)%[^\n]*',txt,re.I)
-     pct=int(m.group(1) or m.group(2)) if m else None
-     msg=m.group(0) if m else next((s.strip() for s in txt.splitlines() if re.search('Checks complete|Processing|检查完成|处理中',s,re.I)), '等待页面提供上传进度')
-     TELEMETRIES[t['id']]={'task':t['id'],'percent':pct,'message':msg,'observed_at':datetime.now(TZ).isoformat()}
-     TELEMETRY.update(TELEMETRIES[t['id']])
-    except Exception as e:
-     TELEMETRIES[t['id']]={'task':t['id'],'percent':None,'message':str(e)[:180],'observed_at':None}
+   from task_progress import collect
+   active={t['id'] for t in running}
+   for key in list(TELEMETRIES):
+    if key not in active:TELEMETRIES.pop(key,None)
+   def publish_progress(result):
+    TELEMETRIES[result['task']]=result
+   collect(running,publish_progress)
 
   except Exception as e:
    TELEMETRY.update(percent=None,message=str(e)[:180],observed_at=None)
@@ -143,7 +129,7 @@ def snapshot(gms=None):
  if not ready:blocked.insert(0,'桥接服务未运行')
  with MUTEX:job=json.loads(json.dumps(JOB))
  publishable={c['id'] for w in window_items for c in w['channels'] if c['enabled'] and c['verified'] and config.get('manual_ready',{}).get(c['gm']) and (w['id'] not in onboarding or c['id'] in {ch['id'] for ch in onboarding[w['id']].get('channels',[])})}
- return {'publishable_channels_count':len(publishable),'version':'1.3.1','material_rules':material_rules.read(),'manual_queue':manual_queue.read(),'concurrency':parallel_settings.read(),'telemetries':dict(TELEMETRIES),'acceptance':acceptance.state(),'schedule':scheduler.state(),'service':'ypp-dashboard','time':now.isoformat(),'bridge':ready,'tasks':tasks,'assets':assets,'channels':channels,'windows':window_items,'window_updated':window_state['updated'],'window_error':window_state['error'],'logs':logs,'telemetry':dict(TELEMETRY),'job':job,'blockers':blocked,'sync_pending':pending,'mode':'手动启动 · 可选草稿或正式发布','public_ready':config.get('execution_engine')!='local' or bool(config.get('local_public_enabled')),'source':local_settings.read().get('material_dir','尚未选择素材目录'),'feishu':feishu_auth.state(),'base':feishu_link()}
+ return {'publishable_channels_count':len(publishable),'version':'1.3.2','material_rules':material_rules.read(),'manual_queue':manual_queue.read(),'concurrency':parallel_settings.read(),'telemetries':dict(TELEMETRIES),'acceptance':acceptance.state(),'schedule':scheduler.state(),'service':'ypp-dashboard','time':now.isoformat(),'bridge':ready,'tasks':tasks,'assets':assets,'channels':channels,'windows':window_items,'window_updated':window_state['updated'],'window_error':window_state['error'],'logs':logs,'telemetry':dict(TELEMETRY),'job':job,'blockers':blocked,'sync_pending':pending,'mode':'手动启动 · 可选草稿或正式发布','public_ready':config.get('execution_engine')!='local' or bool(config.get('local_public_enabled')),'source':local_settings.read().get('material_dir','尚未选择素材目录'),'feishu':feishu_auth.state(),'base':feishu_link()}
 
 def task_preview(task_id):
  import base64, mimetypes
@@ -152,6 +138,8 @@ def task_preview(task_id):
   r=l.db.execute('SELECT t.id,t.state,t.mode,t.url,c.gm,c.name,a.payload FROM tasks t JOIN channels c ON c.id=t.channel LEFT JOIN assets a ON a.sha=t.sha WHERE t.id=?',(task_id,)).fetchone()
   if not r:return None
   d=dict(r);a=json.loads(d.pop('payload') or '{}')
+  q=manual_queue.read()
+  if d['state']=='待执行' and q.get('enabled') and task_id in q.get('tasks',[]):d['mode']=q.get('mode',d['mode'])
   for key in ('title','description','tags','hashtags','raw_description','description_source'):d[key]=a.get(key,'')
   d['filename']=Path(a.get('video','')).name
   d['thumbnail']=None
@@ -276,7 +264,7 @@ class Handler(BaseHTTPRequestHandler):
    return self.reply(200,installation.status())
   if self.path=='/workflow-template':
    body=(ROOT/'通用流程-无凭据.automa.json').read_bytes();self.send_response(200);self.send_header('Content-Type','application/octet-stream');self.send_header('Content-Disposition','attachment; filename=YouTube-workflow.automa.json');self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body);return
-  if self.path=='/health':return self.reply(200,{'service':'ypp-dashboard','version':'1.3.1','data_dir':str(ROOT)})
+  if self.path=='/health':return self.reply(200,{'service':'ypp-dashboard','version':'1.3.2','data_dir':str(ROOT)})
   self.reply(404,{'error':'未找到'})
  def do_POST(self):
   if (ROOT/'.update-lock').exists():return self.reply(409,{'error':'正在等待安装应用更新，已暂停新操作'})

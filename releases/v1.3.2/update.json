@@ -1,0 +1,8 @@
+{
+  "version": "1.3.2",
+  "url": "https://github.com/waltertech/youtube-publisher-releases/releases/download/v1.3.2/YouTubePublisher-Mac-1.3.2.zip",
+  "sha256": "19dfb4375273aa22171981c585bbb7b25059d43df1479dfa5e497ec80a738fbc",
+  "size": 79920938,
+  "notes": "展示全部排队任务；并行任务独立读取上传进度，标记过期进度并区分处理中百分比；任务预览展示草稿或正式发布类型。",
+  "minimum_macos": "12.0"
+}

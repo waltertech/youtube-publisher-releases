@@ -7,11 +7,11 @@ from websockets.sync.client import connect
 from publisher import Ledger,ROOT,datetime,TZ
 
 class CDP:
- def __init__(self,ws):self.ws=connect(ws,**websocket_options(ws),origin=None,max_size=8*1024*1024,open_timeout=10);self.seq=0
+ def __init__(self,ws,timeout=30):self.timeout=timeout;self.ws=connect(ws,**websocket_options(ws),origin=None,max_size=8*1024*1024,open_timeout=min(timeout,10),close_timeout=min(timeout,5));self.seq=0
  def call(self,method,params=None):
   self.seq+=1;key=self.seq;self.ws.send(json.dumps({'id':key,'method':method,'params':params or {}}))
   while True:
-   x=json.loads(self.ws.recv(timeout=30))
+   x=json.loads(self.ws.recv(timeout=self.timeout))
    if x.get('id')==key:
     if 'error' in x:raise RuntimeError(x['error']['message'])
     return x.get('result',{})
