@@ -1,0 +1,24 @@
+{
+  "version": "1.3.0",
+  "status": "pending_release_upload_and_original_publisher_signature",
+  "assets": [
+    {
+      "name": "YouTubePublisher-Mac-1.3.0.dmg",
+      "size": 116069583,
+      "sha256": "a6fe42d4d2c7b8c45fea44726bd22a05c47921d32496affbd18f36759761d16a",
+      "uploaded": false
+    },
+    {
+      "name": "YouTubePublisher-Mac-1.3.0.zip",
+      "size": 79916083,
+      "sha256": "898d803f05372d3ca900a5dc301881b7867b17446c25a95247441b7702828558",
+      "uploaded": false
+    },
+    {
+      "name": "YouTubePublisher-Source-1.3.0.zip",
+      "size": 78393265,
+      "sha256": "4a6b9bb3d700555c806c4f3bfce544c08a05df88a1b74beecd326d40ad1aacf0",
+      "uploaded": false
+    }
+  ]
+}

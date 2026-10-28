@@ -1,0 +1,13 @@
+发布标题
+My Music Collection
+
+详情内容
+这里填写视频介绍。
+此处已有的 #Music 会保留；只要这里非空，底部 Hashtags 不会追加。
+
+YouTube Studio Tags
+music collection, instrumental music, relaxing music
+
+Hashtags
+#Music #Instrumental
+#RelaxingMusic

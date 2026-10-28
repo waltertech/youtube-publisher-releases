@@ -1,0 +1,612 @@
+{
+  "extVersion": "1.29.6",
+  "name": "YouTube多频道发布-手动草稿与正式发布",
+  "icon": "riGlobalLine",
+  "table": [],
+  "version": "1.29.6",
+  "drawflow": {
+    "nodes": [
+      {
+        "id": "5fe9519e100c",
+        "label": "trigger",
+        "type": "BlockBasic",
+        "position": {
+          "x": 80,
+          "y": 100
+        },
+        "data": {
+          "disableBlock": false,
+          "description": "手动运行；绑定 GM040",
+          "type": "manual",
+          "interval": 60,
+          "delay": 5,
+          "date": "",
+          "time": "00:00",
+          "url": "",
+          "shortcut": "",
+          "activeInInput": false,
+          "isUrlRegex": false,
+          "days": [],
+          "contextMenuName": "",
+          "contextTypes": [],
+          "parameters": [],
+          "preferParamsInTab": false,
+          "observeElement": {
+            "selector": "",
+            "baseSelector": "",
+            "matchPattern": "",
+            "targetOptions": {
+              "subtree": false,
+              "childList": true,
+              "attributes": false,
+              "attributeFilter": [],
+              "characterData": false
+            },
+            "baseElOptions": {
+              "subtree": false,
+              "childList": true,
+              "attributes": false,
+              "attributeFilter": [],
+              "characterData": false
+            }
+          }
+        }
+      },
+      {
+        "id": "97570b1e7ce6",
+        "label": "javascript-code",
+        "type": "BlockBasic",
+        "position": {
+          "x": 410,
+          "y": 100
+        },
+        "data": {
+          "disableBlock": false,
+          "description": "仅领取调度器已锁定的输入",
+          "timeout": 30000,
+          "context": "background",
+          "code": "const g=automaRefData('globalData'); const post=async(path,p)=>{const r=await fetch('http://127.0.0.1:18740/'+path,{method:'POST',headers:{'Content-Type':'application/json','X-Publisher-Key':g.bridge_key},body:JSON.stringify(p)});const x=await r.json();if(!r.ok)throw new Error(x.error);return x;};post('input',{gm:g.gm}).then(p=>{automaSetVariable('payload',p);automaSetVariable('last_error','');automaNextBlock();}).catch(e=>{console.error(e);throw e;});",
+          "preloadScripts": [],
+          "everyNewTab": false,
+          "runBeforeLoad": false
+        }
+      },
+      {
+        "id": "4b95595295b0",
+        "label": "new-tab",
+        "type": "BlockBasic",
+        "position": {
+          "x": 740,
+          "y": 100
+        },
+        "data": {
+          "disableBlock": false,
+          "description": "打开目标频道 Studio",
+          "url": "https://studio.youtube.com/channel/{{variables.payload.channel_id}}",
+          "userAgent": "",
+          "active": true,
+          "tabZoom": 1,
+          "inGroup": false,
+          "waitTabLoaded": true,
+          "updatePrevTab": false,
+          "customUserAgent": false
+        }
+      },
+      {
+        "id": "d7dae86bde7e",
+        "label": "javascript-code",
+        "type": "BlockBasic",
+        "position": {
+          "x": 1070,
+          "y": 100
+        },
+        "data": {
+          "disableBlock": false,
+          "description": "核对频道并打开上传入口",
+          "timeout": 120000,
+          "context": "website",
+          "code": "const cfg = automaRefData('variables','payload');\nconst sleep = ms => new Promise(r => setTimeout(r, ms));\nconst visible = e => e && e.getClientRects().length;\nconst wait = async (fn, ms=60000) => { const end=Date.now()+ms; while(Date.now()<end){ const v=fn(); if(v)return v; const text=document.body.innerText; if(/verify your phone number|验证.*手机号|phone verification/i.test(text))throw new Error('频道需要手机号验证，无法上传长视频'); await sleep(500); } throw new Error('等待页面状态超时'); };\nconst button = (s) => document.querySelector(s);\nconst click = async s => { const e=await wait(()=>button(s)); if(e.disabled||e.getAttribute('aria-disabled')==='true')throw new Error('按钮不可用: '+s); e.click(); await sleep(700); };\nconst run = async () => {\nconst href=await wait(()=>[...document.querySelectorAll('a[href]')].map(a=>a.href).find(x=>/^https:\\/\\/studio.youtube.com\\/channel\\/UC/.test(x))); const observed=href.split('/channel/')[1].split('/')[0];if(observed!==cfg.channel_id)throw new Error('错频道，停止');\nif(!cfg.title || cfg.title.length>100 || !cfg.description || cfg.description.length>5000)throw new Error('文案缺失或超过长度限制');\nawait click('#upload-icon');\nawait wait(()=>document.querySelector('ytcp-uploads-file-picker input[type=file]'));\n};\nrun().then(()=>automaNextBlock()).catch(e=>{ console.error(e); automaSetVariable(\"last_error\",e.message); automaNextBlock(); });",
+          "preloadScripts": [],
+          "everyNewTab": false,
+          "runBeforeLoad": false
+        }
+      },
+      {
+        "id": "1ece16cf7bb7",
+        "label": "javascript-code",
+        "type": "BlockBasic",
+        "position": {
+          "x": 80,
+          "y": 300
+        },
+        "data": {
+          "disableBlock": false,
+          "description": "核查页面步骤错误",
+          "timeout": 30000,
+          "context": "background",
+          "code": "const g=automaRefData('globalData'); const post=async(path,p)=>{const r=await fetch('http://127.0.0.1:18740/'+path,{method:'POST',headers:{'Content-Type':'application/json','X-Publisher-Key':g.bridge_key},body:JSON.stringify(p)});const x=await r.json();if(!r.ok)throw new Error(x.error);return x;};const error=automaRefData('variables','last_error');const p=automaRefData('variables','payload');if(error){post('report',{key:p.id,token:p.token,channel_id:p.channel_id,state:'结果待核查',error}).then(()=>{throw new Error(error)});}else{automaNextBlock();}",
+          "preloadScripts": [],
+          "everyNewTab": false,
+          "runBeforeLoad": false
+        }
+      },
+      {
+        "id": "dc197c316dae",
+        "label": "javascript-code",
+        "type": "BlockBasic",
+        "position": {
+          "x": 410,
+          "y": 300
+        },
+        "data": {
+          "disableBlock": false,
+          "description": "原生路径上传 video",
+          "timeout": 120000,
+          "context": "background",
+          "code": "const g=automaRefData('globalData'); const post=async(path,p)=>{const r=await fetch('http://127.0.0.1:18740/'+path,{method:'POST',headers:{'Content-Type':'application/json','X-Publisher-Key':g.bridge_key},body:JSON.stringify(p)});const x=await r.json();if(!r.ok)throw new Error(x.error);return x;};const p=automaRefData('variables','payload');post('upload-file',{key:p.id,token:p.token,channel_id:p.channel_id,kind:\"video\"}).then(()=>automaNextBlock()).catch(e=>{automaSetVariable('last_error',e.message);throw e;});",
+          "preloadScripts": [],
+          "everyNewTab": false,
+          "runBeforeLoad": false
+        }
+      },
+      {
+        "id": "ce462ade287c",
+        "label": "javascript-code",
+        "type": "BlockBasic",
+        "position": {
+          "x": 740,
+          "y": 300
+        },
+        "data": {
+          "disableBlock": false,
+          "description": "持久化状态：填写中",
+          "timeout": 30000,
+          "context": "background",
+          "code": "const g=automaRefData('globalData'); const post=async(path,p)=>{const r=await fetch('http://127.0.0.1:18740/'+path,{method:'POST',headers:{'Content-Type':'application/json','X-Publisher-Key':g.bridge_key},body:JSON.stringify(p)});const x=await r.json();if(!r.ok)throw new Error(x.error);return x;};const p=automaRefData('variables','payload');post('report',{key:p.id,token:p.token,channel_id:p.channel_id,state:\"填写中\"}).then(()=>automaNextBlock()).catch(e=>{console.error(e);throw e;});",
+          "preloadScripts": [],
+          "everyNewTab": false,
+          "runBeforeLoad": false
+        }
+      },
+      {
+        "id": "bb075dc47924",
+        "label": "javascript-code",
+        "type": "BlockBasic",
+        "position": {
+          "x": 1070,
+          "y": 300
+        },
+        "data": {
+          "disableBlock": false,
+          "description": "等待详情并填写标题和描述",
+          "timeout": 180000,
+          "context": "website",
+          "code": "const cfg = automaRefData('variables','payload');\nconst sleep = ms => new Promise(r => setTimeout(r, ms));\nconst visible = e => e && e.getClientRects().length;\nconst wait = async (fn, ms=60000) => { const end=Date.now()+ms; while(Date.now()<end){ const v=fn(); if(v)return v; const text=document.body.innerText; if(/verify your phone number|验证.*手机号|phone verification/i.test(text))throw new Error('频道需要手机号验证，无法上传长视频'); await sleep(500); } throw new Error('等待页面状态超时'); };\nconst button = (s) => document.querySelector(s);\nconst click = async s => { const e=await wait(()=>button(s)); if(e.disabled||e.getAttribute('aria-disabled')==='true')throw new Error('按钮不可用: '+s); e.click(); await sleep(700); };\nconst run = async () => {\nawait wait(()=>document.querySelector('ytcp-video-metadata-editor #title-textarea #textbox'),120000);\nconst fill = (sel,value) => { const el=document.querySelector(sel); if(!el)throw new Error('找不到输入框: '+sel); el.focus(); el.textContent=value; el.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertText',data:value})); el.dispatchEvent(new Event('change',{bubbles:true})); if(el.textContent!==value)throw new Error('文案填写校验失败'); };\nfill('ytcp-video-metadata-editor #title-textarea #textbox',cfg.title);\nfill('ytcp-video-metadata-editor #description-textarea #textbox',cfg.description||'');\nawait wait(()=>document.querySelector('ytcp-video-thumbnail-editor input[type=file]'));\n};\nrun().then(()=>automaNextBlock()).catch(e=>{ console.error(e); automaSetVariable(\"last_error\",e.message); automaNextBlock(); });",
+          "preloadScripts": [],
+          "everyNewTab": false,
+          "runBeforeLoad": false
+        }
+      },
+      {
+        "id": "306f9ea2bc9b",
+        "label": "javascript-code",
+        "type": "BlockBasic",
+        "position": {
+          "x": 80,
+          "y": 500
+        },
+        "data": {
+          "disableBlock": false,
+          "description": "核查页面步骤错误",
+          "timeout": 30000,
+          "context": "background",
+          "code": "const g=automaRefData('globalData'); const post=async(path,p)=>{const r=await fetch('http://127.0.0.1:18740/'+path,{method:'POST',headers:{'Content-Type':'application/json','X-Publisher-Key':g.bridge_key},body:JSON.stringify(p)});const x=await r.json();if(!r.ok)throw new Error(x.error);return x;};const error=automaRefData('variables','last_error');const p=automaRefData('variables','payload');if(error){post('report',{key:p.id,token:p.token,channel_id:p.channel_id,state:'结果待核查',error}).then(()=>{throw new Error(error)});}else{automaNextBlock();}",
+          "preloadScripts": [],
+          "everyNewTab": false,
+          "runBeforeLoad": false
+        }
+      },
+      {
+        "id": "f5f73f59616d",
+        "label": "javascript-code",
+        "type": "BlockBasic",
+        "position": {
+          "x": 410,
+          "y": 500
+        },
+        "data": {
+          "disableBlock": false,
+          "description": "原生路径上传 thumbnail",
+          "timeout": 120000,
+          "context": "background",
+          "code": "const g=automaRefData('globalData'); const post=async(path,p)=>{const r=await fetch('http://127.0.0.1:18740/'+path,{method:'POST',headers:{'Content-Type':'application/json','X-Publisher-Key':g.bridge_key},body:JSON.stringify(p)});const x=await r.json();if(!r.ok)throw new Error(x.error);return x;};const p=automaRefData('variables','payload');post('upload-file',{key:p.id,token:p.token,channel_id:p.channel_id,kind:\"thumbnail\"}).then(()=>automaNextBlock()).catch(e=>{automaSetVariable('last_error',e.message);throw e;});",
+          "preloadScripts": [],
+          "everyNewTab": false,
+          "runBeforeLoad": false
+        }
+      },
+      {
+        "id": "2369891aecf2",
+        "label": "javascript-code",
+        "type": "BlockBasic",
+        "position": {
+          "x": 740,
+          "y": 500
+        },
+        "data": {
+          "disableBlock": false,
+          "description": "设置受众并填写 Tags",
+          "timeout": 120000,
+          "context": "website",
+          "code": "const cfg = automaRefData('variables','payload');\nconst sleep = ms => new Promise(r => setTimeout(r, ms));\nconst visible = e => e && e.getClientRects().length;\nconst wait = async (fn, ms=60000) => { const end=Date.now()+ms; while(Date.now()<end){ const v=fn(); if(v)return v; const text=document.body.innerText; if(/verify your phone number|验证.*手机号|phone verification/i.test(text))throw new Error('频道需要手机号验证，无法上传长视频'); await sleep(500); } throw new Error('等待页面状态超时'); };\nconst button = (s) => document.querySelector(s);\nconst click = async s => { const e=await wait(()=>button(s)); if(e.disabled||e.getAttribute('aria-disabled')==='true')throw new Error('按钮不可用: '+s); e.click(); await sleep(700); };\nconst run = async () => {\nawait sleep(1500);\nif(/file is too large|文件过大|maximum.*2 MB/i.test(document.body.innerText))throw new Error('封面过大，请使用符合平台限制的压缩副本');\nawait click(cfg.made_for_kids?'tp-yt-paper-radio-button[name=\"VIDEO_MADE_FOR_KIDS_MFK\"]':'tp-yt-paper-radio-button[name=\"VIDEO_MADE_FOR_KIDS_NOT_MFK\"]');\nawait click('#toggle-button');\nif(cfg.ai_generated===true)await click('tp-yt-paper-radio-button[name=\"VIDEO_HAS_ALTERED_CONTENT_YES\"]');\nif ((cfg.tags||[]).length) {\nconst tags=await wait(()=>document.querySelector('ytcp-video-metadata-editor-advanced #tags-container input'));\ntags.focus(); const value=(cfg.tags||[]).join(',')+',';\nObject.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(tags,value);\ntags.dispatchEvent(new Event('input',{bubbles:true}));\ntags.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',bubbles:true}));\nawait sleep(1000);\n}\n\nawait click('#category ytcp-dropdown-trigger'); const music=await wait(()=>[...document.querySelectorAll('tp-yt-paper-item')].find(e=>visible(e)&&e.innerText.trim()==='Music'));music.click();\n};\nrun().then(()=>automaNextBlock()).catch(e=>{ console.error(e); automaSetVariable(\"last_error\",e.message); automaNextBlock(); });",
+          "preloadScripts": [],
+          "everyNewTab": false,
+          "runBeforeLoad": false
+        }
+      },
+      {
+        "id": "444c1cc23f5c",
+        "label": "javascript-code",
+        "type": "BlockBasic",
+        "position": {
+          "x": 1070,
+          "y": 500
+        },
+        "data": {
+          "disableBlock": false,
+          "description": "核查页面步骤错误",
+          "timeout": 30000,
+          "context": "background",
+          "code": "const g=automaRefData('globalData'); const post=async(path,p)=>{const r=await fetch('http://127.0.0.1:18740/'+path,{method:'POST',headers:{'Content-Type':'application/json','X-Publisher-Key':g.bridge_key},body:JSON.stringify(p)});const x=await r.json();if(!r.ok)throw new Error(x.error);return x;};const error=automaRefData('variables','last_error');const p=automaRefData('variables','payload');if(error){post('report',{key:p.id,token:p.token,channel_id:p.channel_id,state:'结果待核查',error}).then(()=>{throw new Error(error)});}else{automaNextBlock();}",
+          "preloadScripts": [],
+          "everyNewTab": false,
+          "runBeforeLoad": false
+        }
+      },
+      {
+        "id": "b5c3272be805",
+        "label": "javascript-code",
+        "type": "BlockBasic",
+        "position": {
+          "x": 80,
+          "y": 700
+        },
+        "data": {
+          "disableBlock": false,
+          "description": "进入检查页并等待上传完成",
+          "timeout": 7260000,
+          "context": "website",
+          "code": "const cfg = automaRefData('variables','payload');\nconst sleep = ms => new Promise(r => setTimeout(r, ms));\nconst visible = e => e && e.getClientRects().length;\nconst wait = async (fn, ms=60000) => { const end=Date.now()+ms; while(Date.now()<end){ const v=fn(); if(v)return v; const text=document.body.innerText; if(/verify your phone number|验证.*手机号|phone verification/i.test(text))throw new Error('频道需要手机号验证，无法上传长视频'); await sleep(500); } throw new Error('等待页面状态超时'); };\nconst button = (s) => document.querySelector(s);\nconst click = async s => { const e=await wait(()=>button(s)); if(e.disabled||e.getAttribute('aria-disabled')==='true')throw new Error('按钮不可用: '+s); e.click(); await sleep(700); };\nconst run = async () => {\nawait click('#next-button'); await click('#next-button');\nawait wait(()=>{ const txt=document.body.innerText; if(/upload failed|processing abandoned|上传失败|处理已终止/i.test(txt))throw new Error('上传或处理失败'); return /Checks complete|检查完毕|检查完成/i.test(txt) && !/Uploading \\d|上传中/i.test(txt); },7200000);\nif(/Copyright.*claim|Copyright-protected content found|版权.*申诉|发现受版权保护/i.test(document.body.innerText))throw new Error('版权检查发现问题，请人工检查后继续');\nawait click('#next-button');\n};\nrun().then(()=>automaNextBlock()).catch(e=>{ console.error(e); automaSetVariable(\"last_error\",e.message); automaNextBlock(); });",
+          "preloadScripts": [],
+          "everyNewTab": false,
+          "runBeforeLoad": false
+        }
+      },
+      {
+        "id": "91ac29425de9",
+        "label": "javascript-code",
+        "type": "BlockBasic",
+        "position": {
+          "x": 410,
+          "y": 700
+        },
+        "data": {
+          "disableBlock": false,
+          "description": "核查页面步骤错误",
+          "timeout": 30000,
+          "context": "background",
+          "code": "const g=automaRefData('globalData'); const post=async(path,p)=>{const r=await fetch('http://127.0.0.1:18740/'+path,{method:'POST',headers:{'Content-Type':'application/json','X-Publisher-Key':g.bridge_key},body:JSON.stringify(p)});const x=await r.json();if(!r.ok)throw new Error(x.error);return x;};const error=automaRefData('variables','last_error');const p=automaRefData('variables','payload');if(error){post('report',{key:p.id,token:p.token,channel_id:p.channel_id,state:'结果待核查',error}).then(()=>{throw new Error(error)});}else{automaNextBlock();}",
+          "preloadScripts": [],
+          "everyNewTab": false,
+          "runBeforeLoad": false
+        }
+      },
+      {
+        "id": "684073e16b9d",
+        "label": "javascript-code",
+        "type": "BlockBasic",
+        "position": {
+          "x": 740,
+          "y": 700
+        },
+        "data": {
+          "disableBlock": false,
+          "description": "持久化状态：检查中",
+          "timeout": 30000,
+          "context": "background",
+          "code": "const g=automaRefData('globalData'); const post=async(path,p)=>{const r=await fetch('http://127.0.0.1:18740/'+path,{method:'POST',headers:{'Content-Type':'application/json','X-Publisher-Key':g.bridge_key},body:JSON.stringify(p)});const x=await r.json();if(!r.ok)throw new Error(x.error);return x;};const p=automaRefData('variables','payload');post('report',{key:p.id,token:p.token,channel_id:p.channel_id,state:\"检查中\"}).then(()=>automaNextBlock()).catch(e=>{console.error(e);throw e;});",
+          "preloadScripts": [],
+          "everyNewTab": false,
+          "runBeforeLoad": false
+        }
+      },
+      {
+        "id": "4ffa0e6f6727",
+        "label": "javascript-code",
+        "type": "BlockBasic",
+        "position": {
+          "x": 1070,
+          "y": 700
+        },
+        "data": {
+          "disableBlock": false,
+          "description": "正式发布前持久化授权和检查证据",
+          "timeout": 30000,
+          "context": "background",
+          "code": "const g=automaRefData('globalData'); const post=async(path,p)=>{const r=await fetch('http://127.0.0.1:18740/'+path,{method:'POST',headers:{'Content-Type':'application/json','X-Publisher-Key':g.bridge_key},body:JSON.stringify(p)});const x=await r.json();if(!r.ok)throw new Error(x.error);return x;};const p=automaRefData('variables','payload');if(p.mode==='public'){post('prepare-publish',{key:p.id,token:p.token,channel_id:p.channel_id}).then(()=>automaNextBlock()).catch(e=>{throw e;});}else{automaNextBlock();}",
+          "preloadScripts": [],
+          "everyNewTab": false,
+          "runBeforeLoad": false
+        }
+      },
+      {
+        "id": "cd155a419393",
+        "label": "javascript-code",
+        "type": "BlockBasic",
+        "position": {
+          "x": 80,
+          "y": 900
+        },
+        "data": {
+          "disableBlock": false,
+          "description": "选择可见性；根据发布开关提交",
+          "timeout": 180000,
+          "context": "website",
+          "code": "const cfg = automaRefData('variables','payload');\nconst sleep = ms => new Promise(r => setTimeout(r, ms));\nconst visible = e => e && e.getClientRects().length;\nconst wait = async (fn, ms=60000) => { const end=Date.now()+ms; while(Date.now()<end){ const v=fn(); if(v)return v; const text=document.body.innerText; if(/verify your phone number|验证.*手机号|phone verification/i.test(text))throw new Error('频道需要手机号验证，无法上传长视频'); await sleep(500); } throw new Error('等待页面状态超时'); };\nconst button = (s) => document.querySelector(s);\nconst click = async s => { const e=await wait(()=>button(s)); if(e.disabled||e.getAttribute('aria-disabled')==='true')throw new Error('按钮不可用: '+s); e.click(); await sleep(700); };\nconst run = async () => {\nawait wait(()=>document.querySelector('ytcp-video-visibility-select'));\nif(!cfg.publish_enabled){ automaSetVariable('result','详情已填写；发布开关关闭，保留草稿，请检查页面'); return; }\nif(cfg.visibility!=='public')throw new Error('当前模板只支持明确选择 public');\nawait click('tp-yt-paper-radio-button[name=\"PUBLIC\"]');\nconst publicRadio=document.querySelector('tp-yt-paper-radio-button[name=\"PUBLIC\"]');if(publicRadio.getAttribute('aria-checked')!=='true'&&!publicRadio.hasAttribute('checked'))throw new Error('未确认公开选项，停止');automaSetVariable('public_selected',true);await click('#done-button');\nawait wait(()=>/Video published|视频已发布/i.test(document.body.innerText),120000);\nconst link=Array.from(document.querySelectorAll('a')).map(e=>e.href).find(s=>/^https:\\/\\/(youtu.be\\/|www.youtube.com\\/watch\\?v=)/.test(s));\nautomaSetVariable('published_url',link||'发布成功，请查看成功对话框');\nautomaSetVariable('result','published');\n};\nrun().then(()=>automaNextBlock()).catch(e=>{ console.error(e); automaSetVariable(\"last_error\",e.message); automaNextBlock(); });",
+          "preloadScripts": [],
+          "everyNewTab": false,
+          "runBeforeLoad": false
+        }
+      },
+      {
+        "id": "53a6375206e1",
+        "label": "javascript-code",
+        "type": "BlockBasic",
+        "position": {
+          "x": 410,
+          "y": 900
+        },
+        "data": {
+          "disableBlock": false,
+          "description": "核查页面步骤错误",
+          "timeout": 30000,
+          "context": "background",
+          "code": "const g=automaRefData('globalData'); const post=async(path,p)=>{const r=await fetch('http://127.0.0.1:18740/'+path,{method:'POST',headers:{'Content-Type':'application/json','X-Publisher-Key':g.bridge_key},body:JSON.stringify(p)});const x=await r.json();if(!r.ok)throw new Error(x.error);return x;};const error=automaRefData('variables','last_error');const p=automaRefData('variables','payload');if(error){post('report',{key:p.id,token:p.token,channel_id:p.channel_id,state:'结果待核查',error}).then(()=>{throw new Error(error)});}else{automaNextBlock();}",
+          "preloadScripts": [],
+          "everyNewTab": false,
+          "runBeforeLoad": false
+        }
+      },
+      {
+        "id": "ba6777749b8f",
+        "label": "close-tab",
+        "type": "BlockBasic",
+        "position": {
+          "x": 740,
+          "y": 900
+        },
+        "data": {
+          "disableBlock": true,
+          "description": "发布成功后关闭任务页；草稿调试时禁用",
+          "url": "",
+          "activeTab": true,
+          "closeType": "tab",
+          "allWindows": false
+        }
+      },
+      {
+        "id": "1a39d83bce27",
+        "label": "javascript-code",
+        "type": "BlockBasic",
+        "position": {
+          "x": 1070,
+          "y": 900
+        },
+        "data": {
+          "disableBlock": false,
+          "description": "确认草稿或正式发布结果及视频ID",
+          "timeout": 30000,
+          "context": "background",
+          "code": "const g=automaRefData('globalData'); const post=async(path,p)=>{const r=await fetch('http://127.0.0.1:18740/'+path,{method:'POST',headers:{'Content-Type':'application/json','X-Publisher-Key':g.bridge_key},body:JSON.stringify(p)});const x=await r.json();if(!r.ok)throw new Error(x.error);return x;};const p=automaRefData('variables','payload');post(p.mode==='public'?'confirm-public':'confirm-draft',{key:p.id,token:p.token,channel_id:p.channel_id,public_selected:automaRefData('variables','public_selected')===true}).then(()=>automaNextBlock()).catch(e=>{console.error(e);throw e;});",
+          "preloadScripts": [],
+          "everyNewTab": false,
+          "runBeforeLoad": false
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "vueflow__edge-5fe9519e100c-output-1-97570b1e7ce6-input-1",
+        "source": "5fe9519e100c",
+        "target": "97570b1e7ce6",
+        "sourceHandle": "5fe9519e100c-output-1",
+        "targetHandle": "97570b1e7ce6-input-1",
+        "updatable": true,
+        "selectable": true
+      },
+      {
+        "id": "vueflow__edge-97570b1e7ce6-output-1-4b95595295b0-input-1",
+        "source": "97570b1e7ce6",
+        "target": "4b95595295b0",
+        "sourceHandle": "97570b1e7ce6-output-1",
+        "targetHandle": "4b95595295b0-input-1",
+        "updatable": true,
+        "selectable": true
+      },
+      {
+        "id": "vueflow__edge-4b95595295b0-output-1-d7dae86bde7e-input-1",
+        "source": "4b95595295b0",
+        "target": "d7dae86bde7e",
+        "sourceHandle": "4b95595295b0-output-1",
+        "targetHandle": "d7dae86bde7e-input-1",
+        "updatable": true,
+        "selectable": true
+      },
+      {
+        "id": "vueflow__edge-d7dae86bde7e-output-1-1ece16cf7bb7-input-1",
+        "source": "d7dae86bde7e",
+        "target": "1ece16cf7bb7",
+        "sourceHandle": "d7dae86bde7e-output-1",
+        "targetHandle": "1ece16cf7bb7-input-1",
+        "updatable": true,
+        "selectable": true
+      },
+      {
+        "id": "vueflow__edge-1ece16cf7bb7-output-1-dc197c316dae-input-1",
+        "source": "1ece16cf7bb7",
+        "target": "dc197c316dae",
+        "sourceHandle": "1ece16cf7bb7-output-1",
+        "targetHandle": "dc197c316dae-input-1",
+        "updatable": true,
+        "selectable": true
+      },
+      {
+        "id": "vueflow__edge-dc197c316dae-output-1-ce462ade287c-input-1",
+        "source": "dc197c316dae",
+        "target": "ce462ade287c",
+        "sourceHandle": "dc197c316dae-output-1",
+        "targetHandle": "ce462ade287c-input-1",
+        "updatable": true,
+        "selectable": true
+      },
+      {
+        "id": "vueflow__edge-ce462ade287c-output-1-bb075dc47924-input-1",
+        "source": "ce462ade287c",
+        "target": "bb075dc47924",
+        "sourceHandle": "ce462ade287c-output-1",
+        "targetHandle": "bb075dc47924-input-1",
+        "updatable": true,
+        "selectable": true
+      },
+      {
+        "id": "vueflow__edge-bb075dc47924-output-1-306f9ea2bc9b-input-1",
+        "source": "bb075dc47924",
+        "target": "306f9ea2bc9b",
+        "sourceHandle": "bb075dc47924-output-1",
+        "targetHandle": "306f9ea2bc9b-input-1",
+        "updatable": true,
+        "selectable": true
+      },
+      {
+        "id": "vueflow__edge-306f9ea2bc9b-output-1-f5f73f59616d-input-1",
+        "source": "306f9ea2bc9b",
+        "target": "f5f73f59616d",
+        "sourceHandle": "306f9ea2bc9b-output-1",
+        "targetHandle": "f5f73f59616d-input-1",
+        "updatable": true,
+        "selectable": true
+      },
+      {
+        "id": "vueflow__edge-f5f73f59616d-output-1-2369891aecf2-input-1",
+        "source": "f5f73f59616d",
+        "target": "2369891aecf2",
+        "sourceHandle": "f5f73f59616d-output-1",
+        "targetHandle": "2369891aecf2-input-1",
+        "updatable": true,
+        "selectable": true
+      },
+      {
+        "id": "vueflow__edge-2369891aecf2-output-1-444c1cc23f5c-input-1",
+        "source": "2369891aecf2",
+        "target": "444c1cc23f5c",
+        "sourceHandle": "2369891aecf2-output-1",
+        "targetHandle": "444c1cc23f5c-input-1",
+        "updatable": true,
+        "selectable": true
+      },
+      {
+        "id": "vueflow__edge-444c1cc23f5c-output-1-b5c3272be805-input-1",
+        "source": "444c1cc23f5c",
+        "target": "b5c3272be805",
+        "sourceHandle": "444c1cc23f5c-output-1",
+        "targetHandle": "b5c3272be805-input-1",
+        "updatable": true,
+        "selectable": true
+      },
+      {
+        "id": "vueflow__edge-b5c3272be805-output-1-91ac29425de9-input-1",
+        "source": "b5c3272be805",
+        "target": "91ac29425de9",
+        "sourceHandle": "b5c3272be805-output-1",
+        "targetHandle": "91ac29425de9-input-1",
+        "updatable": true,
+        "selectable": true
+      },
+      {
+        "id": "vueflow__edge-91ac29425de9-output-1-684073e16b9d-input-1",
+        "source": "91ac29425de9",
+        "target": "684073e16b9d",
+        "sourceHandle": "91ac29425de9-output-1",
+        "targetHandle": "684073e16b9d-input-1",
+        "updatable": true,
+        "selectable": true
+      },
+      {
+        "id": "vueflow__edge-684073e16b9d-output-1-4ffa0e6f6727-input-1",
+        "source": "684073e16b9d",
+        "target": "4ffa0e6f6727",
+        "sourceHandle": "684073e16b9d-output-1",
+        "targetHandle": "4ffa0e6f6727-input-1",
+        "updatable": true,
+        "selectable": true
+      },
+      {
+        "id": "vueflow__edge-4ffa0e6f6727-output-1-cd155a419393-input-1",
+        "source": "4ffa0e6f6727",
+        "target": "cd155a419393",
+        "sourceHandle": "4ffa0e6f6727-output-1",
+        "targetHandle": "cd155a419393-input-1",
+        "updatable": true,
+        "selectable": true
+      },
+      {
+        "id": "vueflow__edge-cd155a419393-output-1-53a6375206e1-input-1",
+        "source": "cd155a419393",
+        "target": "53a6375206e1",
+        "sourceHandle": "cd155a419393-output-1",
+        "targetHandle": "53a6375206e1-input-1",
+        "updatable": true,
+        "selectable": true
+      },
+      {
+        "id": "vueflow__edge-53a6375206e1-output-1-ba6777749b8f-input-1",
+        "source": "53a6375206e1",
+        "target": "ba6777749b8f",
+        "sourceHandle": "53a6375206e1-output-1",
+        "targetHandle": "ba6777749b8f-input-1",
+        "updatable": true,
+        "selectable": true
+      },
+      {
+        "id": "vueflow__edge-ba6777749b8f-output-1-1a39d83bce27-input-1",
+        "source": "ba6777749b8f",
+        "target": "1a39d83bce27",
+        "sourceHandle": "ba6777749b8f-output-1",
+        "targetHandle": "1a39d83bce27-input-1",
+        "updatable": true,
+        "selectable": true
+      }
+    ],
+    "zoom": 0.55,
+    "x": 0,
+    "y": 0
+  },
+  "settings": {
+    "publicId": "",
+    "blockDelay": 0,
+    "saveLog": true,
+    "debugMode": false,
+    "restartTimes": 0,
+    "notification": true,
+    "execContext": "popup",
+    "reuseLastState": false,
+    "inputAutocomplete": true,
+    "onError": "stop-workflow",
+    "executedBlockOnWeb": false,
+    "insertDefaultColumn": false,
+    "defaultColumnName": "column"
+  },
+  "globalData": "{}",
+  "description": "由本机调度器领取任务；发布类型以任务锁定值为准，草稿保存或检查后公开；结果不明保持占用。",
+  "includedWorkflows": {}
+}
